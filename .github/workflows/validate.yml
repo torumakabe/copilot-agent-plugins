@@ -1,0 +1,75 @@
+name: Validate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22.23.2
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
+        with:
+          version: 0.12.6
+
+      - name: Set up Python
+        run: uv python install 3.14.5
+
+      - name: Install locked tools
+        run: |
+          npm ci
+          uv venv --python 3.14.5
+          uv pip sync requirements.txt --require-hashes
+
+      - name: Validate plugin manifests with the official schema
+        run: >
+          .venv/bin/check-jsonschema
+          --schemafile https://agent-plugins.org/schemas/1.0.0/plugin.schema.json
+          plugins/*/plugin.json
+
+      - name: Validate marketplace consistency
+        run: npm run validate
+
+      - name: Test skill packaging
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: uv run --no-project python -m unittest discover -s tests -v
+
+      - name: Validate Agent Skills
+        shell: bash
+        run: |
+          .venv/bin/agentskills --help >/dev/null
+          while IFS= read -r -d '' skill_file; do
+            skill_directory="$(dirname "$skill_file")"
+            relative_directory="${skill_directory#plugins/}"
+            validation_directory="$RUNNER_TEMP/skills/$relative_directory"
+            mkdir -p "$(dirname "$validation_directory")"
+            cp -R "$skill_directory" "$validation_directory"
+            sed -i -E \
+              '/^(argument-hint|user-invocable|disable-model-invocation):/d' \
+              "$validation_directory/SKILL.md"
+            .venv/bin/agentskills validate "$validation_directory"
+          done < <(
+            find plugins \
+              -mindepth 4 \
+              -maxdepth 4 \
+              -path '*/skills/*/SKILL.md' \
+              -type f \
+              -print0
+          )

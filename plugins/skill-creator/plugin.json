@@ -1,0 +1,19 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "skill-creator",
+  "version": "0.1.0",
+  "description": "Create, validate, package, and locally verify Agent Skills for GitHub Copilot.",
+  "author": {
+    "name": "torumakabe",
+    "url": "https://github.com/torumakabe"
+  },
+  "homepage": "https://github.com/torumakabe/copilot-agent-plugins/tree/main/plugins/skill-creator",
+  "repository": "https://github.com/torumakabe/copilot-agent-plugins",
+  "license": "Apache-2.0",
+  "keywords": [
+    "skills",
+    "authoring",
+    "validation",
+    "packaging"
+  ]
+}
