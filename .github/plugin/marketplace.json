@@ -8,7 +8,7 @@
       "name": "personal-skills",
       "source": "./plugins/personal-skills",
       "description": "Personal skills for agent discovery, Japanese technical writing, and Copilot CLI LSP setup.",
-      "version": "0.1.0"
+      "version": "0.1.1"
     },
     {
       "name": "skill-creator",

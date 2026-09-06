@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "personal-skills",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Personal skills for agent discovery, Japanese technical writing, and Copilot CLI LSP setup.",
   "author": {
     "name": "torumakabe",
