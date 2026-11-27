@@ -71,6 +71,7 @@ A skill should not surprise the user. Its description, instructions, tools, netw
 
 - Do not add hidden installation, network, credential, destructive, or persistence behavior.
 - Do not create misleading instructions or facilitate unauthorized access or data extraction.
+- The `allowed-tools` field is experimental; support may vary between agent implementations.
 - Respect repository instructions and configuration ownership.
 - Surface required approval before an irreversible or externally visible action.
 
@@ -101,7 +102,7 @@ uv venv
 uv pip sync requirements.txt --require-hashes
 ```
 
-Run the official validator on the skill directory:
+Run the pinned distribution's `agentskills` command on the skill directory:
 
 ```shell
 .venv/bin/agentskills validate path/to/skill
@@ -115,7 +116,7 @@ On Windows:
 
 If the skill uses documented Copilot-only frontmatter that the pinned `skills-ref` release does not yet recognize, use the repository's existing validation adapter rather than weakening the skill or reimplementing frontmatter rules.
 
-Resolve validation errors in `SKILL.md` before packaging. The packaging script intentionally does not parse YAML or invoke the validator.
+The upstream source installation names its executable `skills-ref`. The validator checks frontmatter and the directory name but also accepts lowercase `skill.md`; Copilot requires the exact filename `SKILL.md`. Resolve validation errors in `SKILL.md` before packaging. The packaging script intentionally does not parse YAML or invoke the validator.
 
 ## Package the skill
 
@@ -135,13 +136,13 @@ Inspect the resulting archive and confirm that every path begins with the skill 
 
 Use disposable `COPILOT_HOME` and `COPILOT_CACHE_HOME` directories so development checks do not modify the user's normal Copilot state.
 
-Install a local plugin directory by absolute path:
+Load a local plugin directory without installing it:
 
 ```shell
-copilot plugin install /absolute/path/to/plugin
-copilot plugin list
-copilot skill list --json
+copilot --plugin-dir /absolute/path/to/plugin skill list --json
 ```
+
+Use the same `--plugin-dir` option when starting an interactive session. Current Copilot CLI warns that direct plugin install is deprecated.
 
 Register a local directory that contains one or more skill subdirectories:
 
@@ -159,7 +160,7 @@ copilot plugin list
 copilot skill list --json
 ```
 
-Verify the expected skill name, source, and enabled state. When the local marketplace uses a live directory source, start a new Copilot session or restart the current one after edits.
+Verify the expected skill name, source, and enabled state. For a directly registered skill directory in an interactive session, use `/skills reload` and `/skills info <skill-name>`. When the local marketplace uses a live directory source, start a new Copilot session or restart the current one after edits. See the [Copilot CLI skills documentation](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-skills) and [plugin reference](https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference).
 
 ## Improve leanly
 

@@ -12,9 +12,37 @@ The packaged copy adds Agent Skills license metadata and retains the Copilot CLI
 
 ## Agentic Resource Discovery
 
-`plugins/personal-skills/skills/agentfinder/SKILL.md` was independently authored from the ARD OpenAPI and entry contracts at revision [`c21ac6a70c5ee0c857a84db875a81e44a028919d`](https://github.com/ards-project/ard-spec/tree/c21ac6a70c5ee0c857a84db875a81e44a028919d), which are licensed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0).
+`plugins/personal-skills/skills/agentfinder/SKILL.md` was independently authored from the ARD specification text, OpenAPI and entry contracts at revision [`03063a3c15a16ddf26e9772211b73fec1883590a`](https://github.com/ards-project/ard-spec/tree/03063a3c15a16ddf26e9772211b73fec1883590a), which are licensed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0).
 
-The ARD contracts are referenced as normative technical sources. No ARD connector instruction text was copied.
+The ARD contracts are referenced as technical sources. No ARD connector instruction text was copied.
+
+## Awesome GitHub Copilot LSP Setup
+
+`plugins/personal-skills/skills/lsp-setup/` is copied verbatim from [`github/awesome-copilot`](https://github.com/github/awesome-copilot/tree/1d6704fed9b4ac9e1666a5a6c70d84c410a55aff/skills/lsp-setup) at commit `1d6704fed9b4ac9e1666a5a6c70d84c410a55aff`.
+
+```text
+MIT License
+
+Copyright GitHub, Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
 
 ## Anthropic skill creator
 
