@@ -1,64 +1,32 @@
 ---
 name: lsp-setup
-description: 'Enable code intelligence such as go-to-definition, find-references, hover, and type information for GitHub Copilot CLI by installing and configuring an LSP server. Use when code intelligence is unavailable or when the user asks to set up, install, or configure an LSP server. Supports repository-level and user-level configuration while preserving existing settings and dotfile ownership.'
-license: MIT
+description: 'Enable code intelligence (go-to-definition, find-references, hover, type info) for any programming language by installing and configuring an LSP server for Copilot CLI. Detects the OS, installs the right server, and generates the JSON configuration (user-level or repo-level). Use when you need deeper code understanding and no LSP server is configured, or when the user asks to set up, install, or configure an LSP server.'
 ---
 
 # LSP Setup for GitHub Copilot CLI
 
-Install and configure Language Server Protocol servers for GitHub Copilot CLI.
-
-Use this skill for requests to set up an LSP server, enable code intelligence, or diagnose a missing LSP configuration. Do not use it for editor-specific configuration or ordinary coding tasks where an LSP server already works.
+**UTILITY SKILL** — installs and configures Language Server Protocol servers for Copilot CLI.
+USE FOR: "setup LSP", "install language server", "configure LSP for Java", "add TypeScript LSP", "enable code intelligence", "I need go-to-definition", "find references not working", "need better code understanding"
+DO NOT USE FOR: general coding tasks, IDE/editor LSP configuration, non-Copilot-CLI setups
 
 ## Workflow
 
-1. Determine the requested language from the user request and repository contents. Ask only when the language remains ambiguous.
-2. Detect the operating system. On POSIX, use `uname -s`; on Windows, inspect `$env:OS`.
-3. Inspect the repository instructions, manifests, lockfiles, tool-version configuration, and existing LSP files before choosing an installation method.
-4. Read [references/lsp-servers.md](references/lsp-servers.md) for the server and a configuration snippet.
-5. Prefer repository-level configuration. Reuse `lsp.json` or `.github/lsp.json` when either exists; otherwise choose one location consistent with repository conventions.
-6. Install the server without introducing an unrelated package manager or version policy.
-7. Read the selected JSON file if it exists, parse it, and merge the target server into `lspServers`. Preserve all unrelated keys and server entries.
-8. Verify that the JSON parses and that the configured command resolves.
-9. Restart Copilot CLI and use `/lsp` to confirm that the server starts in a repository containing matching files.
+1. **Ask the language** — use `ask_user` to ask which programming language(s) the user wants LSP support for
+2. **Detect the OS** — run `uname -s` (or check for Windows via `$env:OS` / `%OS%`) to determine macOS, Linux, or Windows
+3. **Look up the LSP server** — read `references/lsp-servers.md` for known servers, install commands, and config snippets (for Java, also read `references/java-jdtls.md`)
+4. **Ask scope** — use `ask_user` to ask whether the config should be user-level (`~/.copilot/lsp-config.json`) or repo-level (`.github/lsp.json`)
+5. **Install the server** — run the appropriate install command for the detected OS
+6. **Write the config** — merge the new server entry into the chosen config file (`~/.copilot/lsp-config.json` for user-level; `.github/lsp.json` for repo-level). Create the file if missing and preserve existing entries.
+7. **Verify** — confirm the LSP binary is on `$PATH` and the config file is valid JSON
 
-## Installation policy
+## Configuration Format
 
-Choose the first method that fits the repository and the server:
+Copilot CLI reads LSP configuration from user-level or repo-level locations, and repo-level config takes precedence over user-level config:
 
-1. an existing project-local package manager and dependency manifest;
-2. mise, only when the project or user already manages tools with mise;
-3. an operating-system or language toolchain package manager already in use;
-4. an official server release or toolchain bundle.
+- **User-level**: `~/.copilot/lsp-config.json`
+- **Repo-level**: `.github/lsp.json` (a bare `lsp.json` at the repo root is not read: with Copilot CLI 1.0.95, `copilot lsp list` listed servers from `.github/lsp.json` but not from a root `lsp.json`)
 
-Follow these constraints:
-
-- Never run `pip` directly. Use `uv add`, `uv tool install`, `uv pip install`, or `uv run` as appropriate.
-- Never install Node.js language servers with `npm install -g`. Add them as project development dependencies, or use an existing mise setup.
-- Do not add device-specific mise pins, installation scripts, or generated configuration templates.
-- Do not change a repository's package manager solely to install an LSP server.
-- Confirm commands on POSIX with `command -v <binary>`, not `which`. On Windows, use `Get-Command <binary>` or `where.exe <binary>`.
-
-## Configuration locations and ownership
-
-Copilot CLI reads LSP configuration from:
-
-- repository level: `lsp.json` or `.github/lsp.json`;
-- user level: `~/.copilot/lsp-config.json`.
-
-Prefer repository-level configuration because it can be reviewed with the code and shared by contributors. If the user explicitly requests the user-level file, first determine whether a dotfile manager owns it. Update the manager's source of truth when it is available and in scope. If it is unavailable or outside the allowed edit scope, clearly report the required source change. Never overwrite a generated `~/.copilot/lsp-config.json` directly.
-
-Before every write:
-
-1. read the entire existing JSON file;
-2. preserve top-level properties other than the intended change;
-3. preserve unrelated `lspServers` entries;
-4. add or update only the selected server key;
-5. serialize valid JSON and review the resulting diff.
-
-Never replace an existing configuration with a snippet from the reference file. The snippets are merge inputs, not complete-file replacements.
-
-## Configuration format
+The JSON structure:
 
 ```json
 {
@@ -67,26 +35,40 @@ Never replace an existing configuration with a snippet from the reference file. 
       "command": "<binary>",
       "args": ["--stdio"],
       "fileExtensions": {
-        ".<ext>": "<languageId>"
+        ".<ext>": "<languageId>",
+        ".<ext2>": "<languageId>"
       }
     }
   }
 }
 ```
 
-- `command` is a binary on `PATH`, an absolute path, or a project-local launcher.
-- `args` selects the server's standard-I/O transport when the server requires an explicit argument.
-- `fileExtensions` maps extensions, including the leading dot, to [Language IDs](https://code.visualstudio.com/docs/languages/identifiers#_known-language-identifiers).
-- Multiple servers can coexist under `lspServers`.
+### Key rules
+
+- `command` is the binary name (must be on `$PATH`) or an absolute path.
+- `args` almost always includes `"--stdio"` to use standard I/O transport.
+- `fileExtensions` maps each file extension (with leading dot) to a [Language ID](https://code.visualstudio.com/docs/languages/identifiers#_known-language-identifiers).
+- Multiple servers can coexist in `lspServers`.
+- When merging into an existing file, **never overwrite** other server entries — only add or update the target language key.
+
+## Behavior
+
+- Always use `ask_user` with `choices` when asking the user to pick a language or scope.
+- If the language is not listed in `references/lsp-servers.md`, search the web for "<language> LSP server" and guide the user through manual configuration.
+- If a package manager is not available (e.g. no Homebrew on macOS), suggest alternative install methods from the reference file.
+- After installation, run `which <binary>` (or `where.exe` on Windows) to confirm the binary is accessible.
+- Show the user the final config JSON before writing it.
+- If the config file already exists, read it first and merge — do not clobber.
 
 ## Verification
 
-Validate both configuration and runtime prerequisites:
+After setup, tell the user:
 
-1. Parse the final JSON with a JSON-aware tool.
-2. Resolve the configured executable from the same environment that launches Copilot CLI.
-3. If a project-local launcher is used, run it from the repository root and confirm that dependencies are installed.
-4. Exit and relaunch Copilot CLI so it reloads the configuration.
-5. Run `/lsp`, then try hover or go-to-definition on a matching source file.
+1. Type `/exit` to quit Copilot CLI — this is **required** so the new LSP configuration is loaded on next launch
+2. Re-launch `copilot` in a project with files of the configured language
+3. Run `/lsp` to check the server status
+4. Try code intelligence features like go-to-definition or hover
 
-If the server fails, report the command, observed output, configuration path, and operating system. Do not claim the setup works until `/lsp` or an equivalent server-start check succeeds.
+## Java
+
+For Java semantic navigation, prefer the `lsp` tool (`goToDefinition`, `findReferences`, `hover`, `incomingCalls`) over grep/view once a server is configured. LSP is optional for Java and is not a prerequisite for build or runtime diagnostics. See `references/java-jdtls.md` for setup details and troubleshooting.

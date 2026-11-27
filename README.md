@@ -73,4 +73,4 @@ If a bad version reaches `main`, publish a higher-version forward fix. For an ur
 
 Original work in this repository is licensed under the [MIT License](LICENSE). Imported or derived material must retain its own license and notices; add third-party notices when such content is introduced.
 
-See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the Japanese writing source and the ARD specification used to author `agentfinder`.
+See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for third-party sources and notices (`japanese-technical-writing`, `agentfinder`, `lsp-setup`, and `skill-creator`).

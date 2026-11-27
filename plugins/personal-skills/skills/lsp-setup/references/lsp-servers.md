@@ -1,96 +1,124 @@
 # Known LSP Servers for Copilot CLI
 
-This reference lists common language servers, supported installation approaches, and configuration objects to merge under the top-level `lspServers` key.
+Reference data for the `lsp-setup` skill. Each section contains install commands per OS and a ready-to-use config snippet.
 
-The snippets assume that Copilot CLI starts from the repository root. For project-local Node.js packages, they use `npx --no-install` so the command cannot download a missing package at runtime. Adapt the launcher to the repository's existing package manager when needed.
+> **Config snippet format**: Each snippet below shows the object to insert as a value under the top-level `lspServers` key. A complete config file looks like: `{ "lspServers": { <snippet here> } }`. When adding multiple languages, merge their snippets as sibling keys under `lspServers`.
 
-## TypeScript and JavaScript
+---
+
+## TypeScript / JavaScript
 
 **Server**: [typescript-language-server](https://github.com/typescript-language-server/typescript-language-server)
 
-Install `typescript` and `typescript-language-server` as development dependencies with the repository's existing Node.js package manager:
+### Install
 
-```shell
-npm install --save-dev typescript typescript-language-server
-```
+| OS      | Command                                               |
+|---------|-------------------------------------------------------|
+| Any     | `npm install -g typescript typescript-language-server` |
 
-Equivalent project-local `pnpm add --save-dev` or `yarn add --dev` commands are suitable when the repository already uses those package managers. An existing mise-managed installation is also suitable.
+### Config snippet
 
 ```json
 {
   "typescript": {
-    "command": "npx",
-    "args": ["--no-install", "typescript-language-server", "--stdio"],
+    "command": "typescript-language-server",
+    "args": ["--stdio"],
     "fileExtensions": {
       ".ts": "typescript",
       ".tsx": "typescriptreact",
       ".js": "javascript",
-      ".jsx": "javascriptreact",
-      ".mts": "typescript",
-      ".cts": "typescript",
-      ".mjs": "javascript",
-      ".cjs": "javascript"
+      ".jsx": "javascriptreact"
     }
   }
 }
 ```
+
+---
 
 ## Java
 
-**Server**: [Eclipse JDT Language Server](https://github.com/eclipse-jdtls/eclipse.jdt.ls)
+**Server**: [Eclipse JDT Language Server (jdtls)](https://github.com/eclipse-jdtls/eclipse.jdt.ls)
 
-JDT LS requires the Java version documented by its current release. Install it through Homebrew or an available distribution package, use an existing mise setup, or download an official milestone archive. Add the provided `jdtls` launcher to `PATH`; do not create a machine-specific wrapper in the repository.
+jdtls itself needs a recent JDK (**21 or newer** for current releases) on `JAVA_HOME` or `$PATH`. This is independent of the project's target JDK: a Java 17 project can be analyzed by jdtls running on JDK 21+, as long as a JDK matching the project's `release`/`toolchain` is installed. Java LSP is optional; it is not required for compiling, testing or runtime diagnostics.
+
+### Install
+
+| OS      | Command                           |
+|---------|-----------------------------------|
+| macOS   | `brew install jdtls`              |
+| Linux   | `brew install jdtls` (Homebrew on Linux), a distro package if available, or download a release from https://download.eclipse.org/jdtls/milestones/, extract it, and put its `bin/` on `PATH` |
+| Windows | Download from https://download.eclipse.org/jdtls/milestones/, extract, and add `bin\` to `PATH` (or use WSL with the Linux steps) |
+
+Windows note: the `bin/jdtls` wrapper is a Python 3.9+ script with no `.exe`/`.cmd` extension, so Windows cannot launch `jdtls` from `PATH` directly. Either use WSL, or configure the LSP `command` as `python` with the full path to the extensionless `bin\jdtls` launcher as the first argument followed by the other args (`jdtls.py` next to it is only the implementation module; running it directly does nothing), or launch the server JAR directly as described in the jdtls README.
+
+The wrapper script (the `jdtls` launcher, which requires Python 3 and imports `jdtls.py`) speaks stdio by default, so no `--stdio` argument is needed.
+
+### Config snippet
+
+Repo-level `.github/lsp.json` (no absolute paths; the data dir is relative to the project):
 
 ```json
 {
-  "java": {
-    "command": "jdtls",
-    "args": [],
-    "fileExtensions": {
-      ".java": "java"
+  "lspServers": {
+    "java": {
+      "command": "jdtls",
+      "args": [
+        "--jvm-arg=-Xmx2G",
+        "-data", ".jdtls-workspace"
+      ],
+      "fileExtensions": {
+        ".java": "java"
+      }
     }
   }
 }
 ```
 
-The `jdtls` launcher handles transport arguments. A manual archive installation may require a different command; follow the [JDT LS command-line documentation](https://github.com/eclipse-jdtls/eclipse.jdt.ls#running-from-the-command-line).
+Add `.jdtls-workspace/` to `.gitignore`. Verified with Homebrew jdtls 1.61.0 on macOS: `--jvm-arg=-Xmx2G -data .jdtls-workspace` are accepted, the server answers `initialize` over stdio and `documentSymbol` on a Quarkus project (Copilot CLI 1.0.95 `copilot lsp list` loads this `.github/lsp.json` shape, which also matches the GitHub docs field table: `command`, `args`, `fileExtensions` required, optional `env`, `rootUri`, `initializationOptions`, `requestTimeoutMs`, `initializationTimeoutMs`; a live `lsp` tool call through it was not exercised). Run `jdtls --help` to confirm that your wrapper version supports `--jvm-arg` and `-data`; if not, drop those flags and use the plain `"args": []` form.
+
+Maven (`pom.xml`) and Gradle (`build.gradle[.kts]`) projects are imported automatically. See [java-jdtls.md](java-jdtls.md) for project import, troubleshooting, performance, Lombok/annotation processing, and what each `lsp` operation provides for Java.
+
+---
 
 ## Python
 
-**Server**: [Pyright](https://github.com/microsoft/pyright)
+**Server**: [pyright](https://github.com/microsoft/pyright)
 
-Install `pyright` as a development dependency with the repository's existing Node.js package manager:
+### Install
 
-```shell
-npm install --save-dev pyright
-```
+| OS      | Command                    |
+|---------|----------------------------|
+| Any     | `npm install -g pyright`   |
+| Any     | `pip install pyright`      |
 
-An existing mise-managed Pyright installation is also suitable. If the repository uses a Python-distributed language server instead, install and invoke it through `uv`; do not run the Python package installer directly.
+### Config snippet
 
 ```json
 {
   "python": {
-    "command": "npx",
-    "args": ["--no-install", "pyright-langserver", "--stdio"],
+    "command": "pyright-langserver",
+    "args": ["--stdio"],
     "fileExtensions": {
-      ".py": "python",
-      ".pyi": "python"
+      ".py": "python"
     }
   }
 }
 ```
 
+---
+
 ## Go
 
-**Server**: [gopls](https://pkg.go.dev/golang.org/x/tools/gopls)
+**Server**: [gopls](https://github.com/golang/tools/tree/master/gopls)
 
-Use an existing Go toolchain, a system package, Homebrew, or an existing mise setup. The Go toolchain can install the official server:
+### Install
 
-```shell
-go install golang.org/x/tools/gopls@latest
-```
+| OS      | Command                                    |
+|---------|--------------------------------------------|
+| Any     | `go install golang.org/x/tools/gopls@latest` |
+| macOS   | `brew install gopls`                       |
 
-Ensure the Go binary directory is already on the environment's `PATH`.
+### Config snippet
 
 ```json
 {
@@ -104,17 +132,22 @@ Ensure the Go binary directory is already on the environment's `PATH`.
 }
 ```
 
+---
+
 ## Rust
 
 **Server**: [rust-analyzer](https://github.com/rust-lang/rust-analyzer)
 
-Prefer the component bundled for the repository's Rust toolchain:
+### Install
 
-```shell
-rustup component add rust-analyzer
-```
+| OS      | Command                        |
+|---------|--------------------------------|
+| Any     | `rustup component add rust-analyzer` |
+| macOS   | `brew install rust-analyzer`   |
+| Linux   | Distribution package or `rustup` |
+| Windows | `rustup component add rust-analyzer` or download from GitHub releases |
 
-Distribution packages, Homebrew, an existing mise setup, and official release binaries are alternatives.
+### Config snippet
 
 ```json
 {
@@ -128,11 +161,21 @@ Distribution packages, Homebrew, an existing mise setup, and official release bi
 }
 ```
 
-## C and C++
+---
+
+## C / C++
 
 **Server**: [clangd](https://clangd.llvm.org/)
 
-Install LLVM or clangd through the operating-system package manager, Homebrew, an existing mise setup, Visual Studio tooling, or an [official LLVM release](https://releases.llvm.org/). Confirm that `clangd` resolves in the environment that launches Copilot CLI.
+### Install
+
+| OS      | Command                                |
+|---------|----------------------------------------|
+| macOS   | `brew install llvm` (clangd included) or Xcode command line tools |
+| Linux   | `apt install clangd` / `dnf install clang-tools-extra` |
+| Windows | Download LLVM from https://releases.llvm.org/ |
+
+### Config snippet
 
 ```json
 {
@@ -152,27 +195,25 @@ Install LLVM or clangd through the operating-system package manager, Homebrew, a
 }
 ```
 
-Projects that use headers as C++ may map `.h` to `cpp` instead.
+---
 
-## C# and .NET
+## C# (.NET)
 
-**Server**: [Roslyn Language Server](https://github.com/dotnet/roslyn)
+**Server**: [Roslyn Language Server](https://github.com/dotnet/roslyn) (via `dotnet dnx`)
 
-Install the .NET SDK through the operating-system package manager, an existing mise setup, Visual Studio, or the official [.NET download](https://dotnet.microsoft.com/download). The following command uses the SDK's `dnx` support:
+### Install
+
+| OS      | Command                                                        |
+|---------|----------------------------------------------------------------|
+| Any     | Requires the [.NET SDK](https://dot.net/download) installed    |
+
+### Config snippet
 
 ```json
 {
   "csharp": {
     "command": "dotnet",
-    "args": [
-      "dnx",
-      "roslyn-language-server",
-      "--yes",
-      "--prerelease",
-      "--",
-      "--stdio",
-      "--autoLoadProjects"
-    ],
+    "args": ["dnx", "roslyn-language-server", "--yes", "--prerelease", "--", "--stdio", "--autoLoadProjects"],
     "fileExtensions": {
       ".cs": "csharp"
     }
@@ -180,25 +221,25 @@ Install the .NET SDK through the operating-system package manager, an existing m
 }
 ```
 
-Confirm that the installed SDK supports `dotnet dnx`. If it does not, use the Roslyn distribution supported by the project's SDK rather than changing the SDK solely for LSP setup.
+---
 
 ## Ruby
 
-**Server**: [Solargraph](https://github.com/castwide/solargraph)
+**Server**: [solargraph](https://github.com/castwide/solargraph)
 
-Add Solargraph to the repository's bundle:
+### Install
 
-```shell
-bundle add solargraph --group development
-```
+| OS      | Command                   |
+|---------|---------------------------|
+| Any     | `gem install solargraph`  |
 
-Use the repository's existing Ruby toolchain or mise setup.
+### Config snippet
 
 ```json
 {
   "ruby": {
-    "command": "bundle",
-    "args": ["exec", "solargraph", "stdio"],
+    "command": "solargraph",
+    "args": ["stdio"],
     "fileExtensions": {
       ".rb": "ruby",
       ".rake": "ruby",
@@ -208,21 +249,25 @@ Use the repository's existing Ruby toolchain or mise setup.
 }
 ```
 
+---
+
 ## PHP
 
-**Server**: [Intelephense](https://github.com/bmewburn/vscode-intelephense)
+**Server**: [intelephense](https://github.com/bmewburn/vscode-intelephense)
 
-Install `intelephense` as a development dependency with the repository's existing Node.js package manager:
+### Install
 
-```shell
-npm install --save-dev intelephense
-```
+| OS      | Command                                    |
+|---------|--------------------------------------------|
+| Any     | `npm install -g intelephense`              |
+
+### Config snippet
 
 ```json
 {
   "php": {
-    "command": "npx",
-    "args": ["--no-install", "intelephense", "--stdio"],
+    "command": "intelephense",
+    "args": ["--stdio"],
     "fileExtensions": {
       ".php": "php"
     }
@@ -230,11 +275,20 @@ npm install --save-dev intelephense
 }
 ```
 
+---
+
 ## Kotlin
 
 **Server**: [kotlin-language-server](https://github.com/fwcd/kotlin-language-server)
 
-Use Homebrew, an available operating-system package, an existing mise setup, or an official release archive. Add the release's launcher to `PATH`.
+### Install
+
+| OS      | Command                                           |
+|---------|---------------------------------------------------|
+| macOS   | `brew install kotlin-language-server`             |
+| Any     | Download from GitHub releases and add to `PATH`   |
+
+### Config snippet
 
 ```json
 {
@@ -249,19 +303,27 @@ Use Homebrew, an available operating-system package, an existing mise setup, or 
 }
 ```
 
+---
+
 ## Swift
 
-**Server**: [SourceKit-LSP](https://github.com/swiftlang/sourcekit-lsp)
+**Server**: [sourcekit-lsp](https://github.com/swiftlang/sourcekit-lsp) (bundled with Swift toolchain)
 
-SourceKit-LSP is bundled with the Swift toolchain. Install Swift through Xcode, the official Swift toolchain, an operating-system package, or an existing mise setup.
+### Install
 
-On macOS, use `xcrun` so the active Xcode toolchain selects the executable:
+| OS      | Command                                                        |
+|---------|----------------------------------------------------------------|
+| macOS   | Included with Xcode; binary at `xcrun sourcekit-lsp`           |
+| Linux   | Included with Swift toolchain; install from https://swift.org  |
+| Windows | Included with Swift toolchain; install from https://swift.org  |
+
+### Config snippet
 
 ```json
 {
   "swift": {
-    "command": "xcrun",
-    "args": ["sourcekit-lsp"],
+    "command": "sourcekit-lsp",
+    "args": [],
     "fileExtensions": {
       ".swift": "swift"
     }
@@ -269,13 +331,23 @@ On macOS, use `xcrun` so the active Xcode toolchain selects the executable:
 }
 ```
 
-On Linux or Windows, when `sourcekit-lsp` is already on `PATH`, use `"command": "sourcekit-lsp"` and an empty `args` array.
+> On macOS you may need to use the full path: `/usr/bin/sourcekit-lsp` or set `command` to `xcrun` with `args: ["sourcekit-lsp"]`.
+
+---
 
 ## Lua
 
-**Server**: [Lua Language Server](https://github.com/LuaLS/lua-language-server)
+**Server**: [lua-language-server](https://github.com/LuaLS/lua-language-server)
 
-Use Homebrew, an available operating-system package, an existing mise setup, or an [official release](https://github.com/LuaLS/lua-language-server/releases). Add the release executable to `PATH`.
+### Install
+
+| OS      | Command                              |
+|---------|--------------------------------------|
+| macOS   | `brew install lua-language-server`   |
+| Linux   | Download from GitHub releases        |
+| Windows | Download from GitHub releases        |
+
+### Config snippet
 
 ```json
 {
@@ -289,21 +361,25 @@ Use Homebrew, an available operating-system package, an existing mise setup, or 
 }
 ```
 
+---
+
 ## YAML
 
 **Server**: [yaml-language-server](https://github.com/redhat-developer/yaml-language-server)
 
-Install `yaml-language-server` as a development dependency with the repository's existing Node.js package manager:
+### Install
 
-```shell
-npm install --save-dev yaml-language-server
-```
+| OS      | Command                                      |
+|---------|----------------------------------------------|
+| Any     | `npm install -g yaml-language-server`        |
+
+### Config snippet
 
 ```json
 {
   "yaml": {
-    "command": "npx",
-    "args": ["--no-install", "yaml-language-server", "--stdio"],
+    "command": "yaml-language-server",
+    "args": ["--stdio"],
     "fileExtensions": {
       ".yaml": "yaml",
       ".yml": "yaml"
@@ -312,21 +388,25 @@ npm install --save-dev yaml-language-server
 }
 ```
 
-## Bash and shell scripts
+---
 
-**Server**: [Bash Language Server](https://github.com/bash-lsp/bash-language-server)
+## Bash / Shell
 
-Install `bash-language-server` as a development dependency with the repository's existing Node.js package manager:
+**Server**: [bash-language-server](https://github.com/bash-lsp/bash-language-server)
 
-```shell
-npm install --save-dev bash-language-server
-```
+### Install
+
+| OS      | Command                                       |
+|---------|-----------------------------------------------|
+| Any     | `npm install -g bash-language-server`         |
+
+### Config snippet
 
 ```json
 {
   "bash": {
-    "command": "npx",
-    "args": ["--no-install", "bash-language-server", "start"],
+    "command": "bash-language-server",
+    "args": ["start"],
     "fileExtensions": {
       ".sh": "shellscript",
       ".bash": "shellscript",
@@ -335,13 +415,3 @@ npm install --save-dev bash-language-server
   }
 }
 ```
-
-## Adapting a snippet
-
-Before merging a snippet:
-
-1. Confirm the server's current installation instructions from its official documentation.
-2. Match the repository's existing package manager and tool-version policy.
-3. Replace the launcher only when the selected installation method requires it.
-4. Read and merge the existing LSP JSON without removing unrelated configuration.
-5. Verify the executable with `command -v` on POSIX or `Get-Command` on Windows.
